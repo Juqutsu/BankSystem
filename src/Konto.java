@@ -1,5 +1,9 @@
 import java.math.BigInteger;
 import java.util.*;
+import org.json.JSONObject;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.Scanner;
 
 
 public class Konto {
@@ -7,6 +11,7 @@ public class Konto {
     public String inhaber;
     double kontostand;
     String IBAN;
+    int amount3;
     int gpt;
 
     Scanner tastatur = new Scanner(System.in);
@@ -14,7 +19,53 @@ public class Konto {
     public void Konto () {
     }
 
-    public void konto_erstellen(String cname, int cid){ //Erstellt ein neues Konto
+    public void konto_erstellen() {
+
+        System.out.println("Willkommen! Wir freuen uns das Sie sich für \nunsere Bank entschieden haben!");
+        System.out.println("Wie heißen Sie?");
+        inhaber = tastatur.nextLine();
+        System.out.println("Geben Sie ein Passwort ein!");
+        String password = tastatur.nextLine();
+        while(password.length() == 0 || password.length() <= 8 || password.length() > 16) {
+            System.out.println("Ihr Passwort darf nicht leer sein!\n" +
+                    "muss mehr als 8 Zeichen enthalten\n" +
+                    "darf nicht mehr als 16 Zeichen enthalten");
+            password = tastatur.nextLine();
+        }
+
+        JSONObject account = new JSONObject();
+        account.put("name", inhaber);
+        account.put("password", password);
+
+        JSONObject accounts;
+        try {
+            String content = new String(Files.readAllBytes(Paths.get("Users/accounts.json")));
+            accounts = new JSONObject(content);
+        } catch (Exception e) {
+            accounts = new JSONObject();
+        }
+
+        // Überprüfen, ob der Benutzername bereits existiert
+        int count = 1;
+        String originalUsername = inhaber;
+        while (accounts.has(inhaber)) {
+            inhaber = originalUsername + count;
+            count++;
+        }
+
+
+        accounts.put(inhaber, account);
+
+        try {
+            Files.write(Paths.get("Users/accounts.json"), accounts.toString().getBytes());
+            System.out.println("Konto erfolgreich erstellt!");
+        } catch (Exception e) {
+            System.out.println("Beim Erstellen des Kontos ist ein Fehler aufgetreten.");
+            e.printStackTrace();
+        }
+    }
+
+    public void konto_information(String cname, int cid){ //Erstellt ein neues Konto
 //        /*
 //        char kontoerstellen;
 //        kontoerstellen = 'y';*/
@@ -64,7 +115,7 @@ public class Konto {
                     System.out.println("Kontostand: " + get_kontostand());
                     break;
                 case 'B':
-                    transaction(2);
+                    transaction();
                     break;
                 case 'C':
                     System.out.println("-------------------------------");
@@ -131,13 +182,12 @@ public class Konto {
         return kontostand;
     }
 
-    public ArrayList transaction (int amount) {
+    public ArrayList transaction () {
 
         ArrayList<String> ueberweisungsInformationen = new ArrayList<>();
         char ueberweisen = '0';
         String empfaengerName;
         String empfaengerIBAN;
-        int betrag;
         String verwendungszweck;
  
 
@@ -154,7 +204,7 @@ public class Konto {
             empfaengerIBAN = tastatur.nextLine();
 
             System.out.println("Betrag: ");
-            betrag = tastatur.nextInt();
+            amount3 = tastatur.nextInt();
             tastatur.nextLine();
 
             System.out.println("Verwendungszweck: ");
@@ -165,16 +215,16 @@ public class Konto {
             ueberweisungsInformationen.add(IBAN);
             ueberweisungsInformationen.add(empfaengerName);
             ueberweisungsInformationen.add(empfaengerIBAN);
-            ueberweisungsInformationen.add(String.valueOf(betrag));
+            ueberweisungsInformationen.add(String.valueOf(amount3));
             ueberweisungsInformationen.add(verwendungszweck);
+
+            kontostand -= amount3;
+            gpt = -amount3;
 
             System.out.printf("Dies sind Ihre Überweisungsinformationen: %s\n", ueberweisungsInformationen);
 
-            kontostand -= betrag;
-
             System.out.printf("Ihr neuer Kontostand lautet: %.2f Euro\n", kontostand);
-            kontostand -= amount;
-            gpt = -amount;
+
 
             return ueberweisungsInformationen;
 

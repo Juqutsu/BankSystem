@@ -14,7 +14,8 @@ public class Main {
 //        String A = tastatur.nextLine();
 //        bank.konto_anlegen(A);
 
-        konto.konto_erstellen("Michael", 01);
+        //konto.konto_information("Michael", 01);
+        konto.konto_erstellen();
 
         System.out.println("Programm ist zu Ende");
     }
