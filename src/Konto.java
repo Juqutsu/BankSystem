@@ -1,41 +1,62 @@
 import java.math.BigInteger;
 import java.util.*;
+import java.io.*;
 import org.json.JSONObject;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Scanner;
 
 
-public class Konto {
+public class Konto extends Bank {
     public int kontonummer;
     public String inhaber;
     double kontostand;
     String IBAN;
-    int amount3;
-    int gpt;
+    double betrag;
+    double gpt;
 
     Scanner tastatur = new Scanner(System.in);
+    Bank bank;
 
     public void Konto () {
+
+        System.out.println("Konto erstellen (e) oder Anmelden? (a)");
+        String input = tastatur.nextLine();
+
+        switch (input) {
+            case "e":
+                konto_erstellen();
+                break;
+            case "a":
+                login();
+                break;
+            default:
+                System.out.println("Keine gültige Eingabe!");
+                break;
+        }
+
     }
+
 
     public void konto_erstellen() {
 
-        System.out.println("Willkommen! Wir freuen uns das Sie sich für \nunsere Bank entschieden haben!");
+        System.out.println("Willkommen! Wir freuen uns, dass Sie sich für unsere Bank entschieden haben!");
+        gen_iban();
         System.out.println("Wie heißen Sie?");
         inhaber = tastatur.nextLine();
         System.out.println("Geben Sie ein Passwort ein!");
         String password = tastatur.nextLine();
-        while(password.length() == 0 || password.length() <= 8 || password.length() > 16) {
+        while(password.length() == 0 || password.length() < 8 || password.length() > 16) {
             System.out.println("Ihr Passwort darf nicht leer sein!\n" +
                     "muss mehr als 8 Zeichen enthalten\n" +
                     "darf nicht mehr als 16 Zeichen enthalten");
             password = tastatur.nextLine();
         }
 
-        JSONObject account = new JSONObject();
-        account.put("name", inhaber);
-        account.put("password", password);
+
+        KontoInfo kontoInfo = new KontoInfo(inhaber, password, get_iban(), kontonummer(), kontostand);
+
+        kontoInfo.setIban(get_iban());
 
         JSONObject accounts;
         try {
@@ -47,14 +68,13 @@ public class Konto {
 
         // Überprüfen, ob der Benutzername bereits existiert
         int count = 1;
-        String originalUsername = inhaber;
-        while (accounts.has(inhaber)) {
-            inhaber = originalUsername + count;
+        String originalUsername = kontoInfo.getInhaber();
+        while (accounts.has(kontoInfo.getInhaber())) {
+            kontoInfo.setInhaber(originalUsername + count);
             count++;
         }
 
-
-        accounts.put(inhaber, account);
+        accounts.put(kontoInfo.getInhaber(), kontoInfo.toJSON());
 
         try {
             Files.write(Paths.get("Users/accounts.json"), accounts.toString().getBytes());
@@ -63,98 +83,55 @@ public class Konto {
             System.out.println("Beim Erstellen des Kontos ist ein Fehler aufgetreten.");
             e.printStackTrace();
         }
+
+        System.out.println("Willkommen " + kontoInfo.getInhaber());
+        System.out.println("Ihr Passwort ist " + password);
     }
 
-    public void konto_information(String cname, int cid){ //Erstellt ein neues Konto
-//        /*
-//        char kontoerstellen;
-//        kontoerstellen = 'y';*/
-//
-//        //if(kontoerstellen == 'y') {
-//            inhaber = name; //Angegebener Name des Inhabers wird festgelegt
-//            kontonummer = kontonummer(); //Kontonummer wird generiert
-//            kontostand = 0;
-//            System.out.print ("\n Hallo "+ inhaber + "\n Vielen Dank, dass Sie sich für uns entschieden haben. :) \n Kontonummer: "+ get_kontonummer()+ "\n Kontostand: "+ kontostand + " Euro" + "\n IBAN: "+ gen_iban());
-//
-//        /*} else {
-//            System.out.println("Sie wollen also kein Konto erstellen? Sind Sie sich sicher?");
-//
-//            if(kontoerstellen == 'y') {
-//                System.out.println("Okay, dann bekommen Sie kein Konto");
-//            } else {
-//                konto_erstellen(name);
-//            }
-//        }*/
+    public void login() {
+        File file = new File("Users/accounts.json");
+        JSONObject accounts;
 
-        inhaber = cname;
-        kontonummer = cid;
-
-        char option = '\0';
-
-
-        System.out.println("Willkommen " + inhaber);
-        System.out.println("Ihre Kontonummer ist " + kontonummer());
-        System.out.println();
-        System.out.println("A. Sehe deinen Kontostand");
-        System.out.println("B. Taetige eine Ueberweisung");
-        System.out.println("C. Hebe Geld ab");
-        System.out.println("D. Transaktionen");
-        System.out.println("E. Exit");
-
-
-        do{
-            System.out.println("-------------------------------");
-            System.out.println("Wähle eine Option");
-            System.out.println("-------------------------------");
-            option = tastatur.next().charAt(0);
-
-            Character.toUpperCase(option);
-
-            switch (option) {
-                case 'A':
-                    System.out.println("Kontostand: " + get_kontostand());
-                    break;
-                case 'B':
-                    transaction();
-                    break;
-                case 'C':
-                    System.out.println("-------------------------------");
-                    System.out.println("Gebe eine wieviel du abheben möchtest");
-                    System.out.println("-------------------------------");
-                    int amount2 = tastatur.nextInt();
-                    abheben(amount2);
-                    System.out.println("Du hast " + amount2 + " Euro abgehoben");
-                    break;
-                case 'D':
-                    System.out.println("-------------------------------");
-                    getPreviousTransaction();
-                    System.out.println("-------------------------------");
-                    System.out.println();
-                    break;
-                case 'E':
-                    System.out.println("-------------------------------");
-                    break;
-                default:
-                    System.out.println("Dies ist keine Option");
+        try {
+            if (file.exists()) {
+                String content = new String(new FileInputStream(file).readAllBytes());
+                accounts = new JSONObject(content);
+            } else {
+                accounts = new JSONObject();
             }
 
-        } while (option!= 'E');
+            Scanner scanner = new Scanner(System.in);
+            System.out.println("Bitte geben Sie Ihren Benutzernamen ein:");
+            String name = scanner.nextLine();
+            System.out.println("Bitte geben Sie Ihr Passwort ein:");
+            String password = scanner.nextLine();
 
+            if (accounts.has(name)) {
+                JSONObject user = accounts.getJSONObject(name);
+                if (user.getString("password").equals(password)) {
+                    inhaber = name;
+                    kontonummer = user.getInt("kontonummer");
+                    kontostand = user.getDouble("kontostand");
 
-    }
+                    // Retrieve the IBAN using the correct key
+                    IBAN = user.getString("iban");
 
-    public int kontonummer() {
-        for (int i = 0; i < 10; i++) {
-            int random = new Random().nextInt(9);
-            kontonummer = kontonummer + random;
+                    System.out.println("Anmeldung erfolgreich!");
+                    Bank bank = new Bank();
+                    super.konto_information(this);
+                } else {
+                    System.out.println("Falsches Passwort!");
+                    login();
+                }
+            } else {
+                System.out.println("Benutzername existiert nicht!");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
         }
-        return kontonummer;
-    }
-    public String get_iban(){
-        return IBAN;
     }
 
-    public String gen_iban (){
+    public void gen_iban (){
         String countrycode = "DE";
         String recNumber = "131400";
         String blz = "85203647";
@@ -171,10 +148,24 @@ public class Konto {
             checkSumString = checkSum.toString();
         }
 
-        return countrycode + checkSumString + blz + kontonummer;
-
+        IBAN = countrycode + checkSumString + blz + kontonummer;
 
     }
+    public String get_iban(){
+        return IBAN;
+    }
+
+
+    public int kontonummer() {
+        for (int i = 0; i < 10; i++) {
+            int random = new Random().nextInt(9);
+            kontonummer = kontonummer + random;
+        }
+        return kontonummer;
+    }
+
+
+
     public String get_inhaber (){
         return inhaber;
     }
@@ -182,14 +173,14 @@ public class Konto {
         return kontostand;
     }
 
-    public ArrayList transaction () {
+    public ArrayList<String> transaction () {
 
         ArrayList<String> ueberweisungsInformationen = new ArrayList<>();
         char ueberweisen = '0';
         String empfaengerName;
         String empfaengerIBAN;
         String verwendungszweck;
- 
+
 
         System.out.println("Wollen Sie eine Überweisung tätigen? y/n: ");
         ueberweisen = tastatur.next().charAt(0);
@@ -204,22 +195,29 @@ public class Konto {
             empfaengerIBAN = tastatur.nextLine();
 
             System.out.println("Betrag: ");
-            amount3 = tastatur.nextInt();
+            betrag = tastatur.nextDouble();
             tastatur.nextLine();
+
+            if (betrag > kontostand) {
+                System.out.println("Nicht ausreichender Kontostand für die Überweisung!");
+                return null;
+            }
+
 
             System.out.println("Verwendungszweck: ");
             verwendungszweck = tastatur.nextLine();
             tastatur.nextLine();
 
 
-            ueberweisungsInformationen.add(IBAN);
+            ueberweisungsInformationen.add(get_iban());
             ueberweisungsInformationen.add(empfaengerName);
             ueberweisungsInformationen.add(empfaengerIBAN);
-            ueberweisungsInformationen.add(String.valueOf(amount3));
+            ueberweisungsInformationen.add(String.valueOf(betrag));
             ueberweisungsInformationen.add(verwendungszweck);
 
-            kontostand -= amount3;
-            gpt = -amount3;
+            kontostand -= betrag;
+            gpt = -betrag;
+
 
             System.out.printf("Dies sind Ihre Überweisungsinformationen: %s\n", ueberweisungsInformationen);
 
@@ -231,21 +229,21 @@ public class Konto {
         } else if (ueberweisen == 'n') {
             System.out.println("Sie wollen keine Überweisung tätigen!");
             return null;
+
         } else {
             System.out.println("Sie haben weder y noch n eingeben!");
-            return null;
+            return  null;
         }
-
     }
 
     public int get_kontonummer (){
         return kontonummer;
     }
-    public void einzahlen (int amount){
+    public void einzahlen (double amount){
         kontostand += amount;
         gpt = amount;
     }
-    public void abheben (int amount) {
+    public void abheben (Double amount) {
         if(amount != 0) {
             kontostand -= amount;
             gpt = -amount;
@@ -261,5 +259,27 @@ public class Konto {
             System.out.println("Es wurde keine Transaktion getätigt");
         }
     }
+
+    public void updateKontostandInJSON(Konto konto) {
+        File file = new File("Users/accounts.json");
+        JSONObject accounts;
+
+        try {
+            if (file.exists()) {
+                String content = new String(new FileInputStream(file).readAllBytes());
+                accounts = new JSONObject(content);
+
+                if (accounts.has(konto.inhaber)) {
+                    JSONObject user = accounts.getJSONObject(konto.inhaber);
+                    user.put("kontostand", konto.kontostand);
+
+                    Files.write(Paths.get("Users/accounts.json"), accounts.toString().getBytes());
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
 
 }

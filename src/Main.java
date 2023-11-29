@@ -4,18 +4,12 @@ public class Main {
 
 
     public static void main(String[] args) {
-        Bank bank = new Bank();
-        SQL sql = new SQL();
         Konto konto = new Konto();
+        Konto konto2 = new Konto();
+        Bank bank = new Bank();
 
-//        Scanner tastatur = new Scanner(System.in);
+        konto.Konto();
 
-//        System.out.println("Wie heißen Sie?");
-//        String A = tastatur.nextLine();
-//        bank.konto_anlegen(A);
-
-        //konto.konto_information("Michael", 01);
-        konto.konto_erstellen();
 
         System.out.println("Programm ist zu Ende");
     }
